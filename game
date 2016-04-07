@@ -1,0 +1,464 @@
+import java.util.Scanner;
+
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.util.ArrayList;
+import java.util.Random;
+import java.lang.StringBuilder;
+
+public class Game   {
+	static boolean gameOn;
+	static boolean player1Turn;
+	static int player1Score = 0;
+	static int computerScore = 0;
+	static String currentPlayer;
+	static boolean[] guessed;
+	static StringBuilder guesses = new StringBuilder();
+
+	public static void main(String[] args) throws Exception {
+
+		Scanner input = new Scanner(System.in);
+
+		System.out.println("Welcome to Wheel Of Fortune!\n\nPlayer who guesses phrase first wins OR player with the highest score "
+				+ "\nwhen all characters are guessed!\n(Lower case and Upper case letters are counted as different characters)\n");
+		System.out.println("Enter Player 1's name: ");
+		String playerName = input.nextLine();
+
+		// start with player 1
+		currentPlayer = playerName;
+		gameOn = true;
+
+		// read topics
+		String topic = randomTopic();
+		
+		//initialize guessed array with boolean values (will turn true when guessed) 
+		guessed = new boolean[topic.length()];
+		
+		//initialize character array with characters in the topic string
+		char[] topicChar = topic.toCharArray();
+
+		//first print board to show topic length 
+		printBoard(topic);
+		System.out.println("\n" + currentPlayer + "'s turn!");
+		
+		//start game 
+		while (gameOn) {
+		
+			// spin to get value of points (read points from file) 
+			String value = spin();
+
+			int points = 0;
+
+			if (value.matches("Bankruptcy")) {
+				points = 0;
+				System.out.print("\n" + currentPlayer + " goes bankrupt :( ");
+				updateScore(points);
+				switchPlayers(currentPlayer, playerName);
+				printScore(playerName);
+				System.out.println( currentPlayer + "'s turn!\n");
+				//print board 
+				for (int j = 0; j < topic.length(); j++) {
+					if (guessed[j] == true) {
+						System.out.print(topicChar[j]);
+					} else {
+						System.out.print("-");
+					}
+
+				}
+				
+			} 
+			
+			else if (value.matches("1Million")) {
+				points = 1000000;
+				System.out.println("\n" + currentPlayer + " spins a " + value + " wedge.\n");
+			} 
+			
+			else {
+				points = Integer.parseInt(value);
+				System.out.println("\n" + currentPlayer + " spins a " + value + " wedge.\n");
+			}
+
+			// check if points are negative or positive
+			//if points are negative, current player's score is deducted and player loses their turn. 
+
+			if (points > 0) {
+				
+				int choice; 
+				
+				if(currentPlayer.matches(playerName)){
+				 System.out.println("\n(1) Guess Letter. (2) Guess Phrase. ");
+				 choice = input.nextInt();
+				}
+				else { 
+					System.out.println("\nComputer chose to Guess Letter.");
+					choice = 1; 
+				}
+				
+				if (choice == 1) {
+					
+					String guess; 
+					if(currentPlayer.matches(playerName)){
+					System.out.println("Enter character: ");
+					 guess = input.next();
+					}
+					else { 
+						guess = computerPlay();
+						System.out.print("Computer chose: " + guess);
+					}
+			//check if guess is 1 character long. returns boolean value true if guess is 1 character 
+					boolean guessLength = checkGuessLength(guess);
+
+		   // prompt user to enter 1 character if guess is longer 
+					while (guessLength = false) {
+						guess = guessAgain();
+						guessLength = checkGuessLength(guess);
+					}
+		 //check if guess is already used. returns boolean value false if not used or if nothing guessed yet
+
+					boolean guessUsed = checkGuess(guess);
+
+					while (guessUsed == true) {
+						System.out.print("Character has already been used. Guess again. ");
+						System.out.print("Guess: ");
+						guess = input.next();
+						
+						// check guess length
+						guessLength = checkGuessLength(guess);
+
+						while (guessLength = false) {
+							guess = guessAgain();
+							guessLength = checkGuessLength(guess);
+
+						}
+						// check if guess was used again
+						guessUsed = checkGuess(guess);
+					}
+
+					if (guessUsed == false) {
+						guesses.append(guess);
+					}
+					
+					//count amount of times guess has been found in the topic. returns integer count 
+					int count = guessLetter(topic, guess);
+
+					if (count == 0) {
+						System.out.println("\nNo characters matched.");
+						System.out.println("\n" +currentPlayer + " loses " + points + " points.");
+						updateScore(count, points);
+						printScore(playerName);
+						switchPlayers(currentPlayer, playerName);
+						// print board
+
+						for (int j = 0; j < topic.length(); j++) {
+							if (guessed[j] == true) {
+								System.out.print(topicChar[j]);
+							} 
+							String space = " "; 
+							if (topic.charAt(j) == space.charAt(0)) {
+								System.out.print(" ");
+							}
+							else {
+								System.out.print("-");
+							}
+
+						}
+					}
+					
+				  else {
+						System.out.println("\nCharacter is in phrase!");
+						// update score
+						updateScore(count, points);
+						printScore(playerName);
+						// update board
+						for (int i = 0; i < topic.length(); i++) {
+							if (topic.charAt(i) == guess.charAt(0)) {
+								guessed[i] = true;
+							}
+							String empty = " ";
+							if (topic.charAt(i) == empty.charAt(0) || topic.charAt(i) == empty.charAt(0)) {
+								guessed[i] = true;
+							}
+
+						}
+						// print board
+
+						for (int j = 0; j < topic.length(); j++) {
+							if (guessed[j] == true) {
+								System.out.print(topicChar[j]);
+							} else {
+								System.out.print("-");
+							}
+
+						}
+						//check if all characters guessed
+						boolean gameOver = checkIfGameOver(); 
+						if(gameOver){
+							System.out.print("Congratulations! Phrase is guessed!");
+							if(player1Score > computerScore){
+								System.out.println(playerName + " has won!" );
+							}
+							else { 
+								System.out.println("Computer has won!");
+							}
+							gameOn = false;
+							
+						}
+					}
+
+				}
+			
+
+				if (choice == 2) {
+					// returns true if phrase guessed
+					boolean phraseGuessed = guessPhrase(topic);
+					if (phraseGuessed) {
+						gameOn = false;
+						System.out.println("\nSecret phrase is: " + topic);
+						System.out.print("End of game!");
+					} else {
+						printScore(playerName);
+						switchPlayers(currentPlayer, playerName);
+					}
+
+				}
+
+			}
+
+			else if (points < 0) {
+
+				System.out.println(currentPlayer + " loses " + points * -1 + " points");
+				updateScore(points);
+
+				switchPlayers(currentPlayer, playerName);
+
+				printScore(playerName);
+				System.out.println("\n" + currentPlayer + "'s turn!\n" );
+				//print board
+				for (int j = 0; j < topic.length(); j++) {
+					if (guessed[j] == true) {
+						System.out.print(topicChar[j]);
+					} else {
+						System.out.print("-");
+					}
+
+				}
+			}
+		}
+
+	}
+
+	// read file and randomly choose topic from file
+	public static String randomTopic() throws FileNotFoundException {
+		ArrayList<String> theTopics = new ArrayList<>();
+		File topics = new File("/Users/CSSBU/Desktop/Topics.txt");
+
+		if (topics.exists()) {
+
+			Scanner input = new Scanner(topics);
+
+			while (input.hasNextLine()) {
+				theTopics.add(input.nextLine());
+			}
+			Random random = new Random();
+			String topic = theTopics.get(random.nextInt(theTopics.size()));
+
+			return topic;
+		} else
+			throw new FileNotFoundException("File cannot be read");
+	}
+
+	// print board at beginning of game
+	public static void printBoard(String topic) {
+		for (int i = 0; i < topic.length(); i++) {
+			String space = " ";
+			if (topic.charAt(i) == space.charAt(0)) {
+				System.out.print(" ");
+			} else {
+				System.out.print("_");
+			}
+		}
+	}
+	// spin
+	public static String spin() throws FileNotFoundException {
+		ArrayList<String> scores = new ArrayList<>();
+
+		File wheel = new File("/Users/CSSBU/Desktop/Wheel.txt");
+
+		if (wheel.exists()) {
+			Scanner input = new Scanner(wheel);
+
+			while (input.hasNextLine()) {
+				scores.add(input.nextLine());
+			}
+			Random random = new Random();
+			String amount = scores.get(random.nextInt(scores.size()));
+			return amount;
+		} else
+			throw new FileNotFoundException("File cannot be read");
+	}
+
+	public static void updateScore(int points) {
+		if (currentPlayer.matches("Computer")) {
+			computerScore += points;
+		} 
+		else {
+			player1Score += points;
+		}
+	}
+	
+	public static void switchPlayers(String player, String name) {
+		if (player.equals("Computer")) {
+			currentPlayer = name;
+		} else {
+			currentPlayer = "Computer";
+		}
+	}
+	public static void printScore(String playerName) {
+		System.out.println("\n" + playerName + "'s score: " + player1Score);
+		System.out.println("Computer's score: " + computerScore);
+		System.out.println("Characters already guessed: " + (guesses.length() == 0? "None guessed" : guesses.toString()) + " \n");
+		
+	}
+	
+	public static boolean checkGuessLength(String guess) {
+		if (guess.length() == 1) {
+			return true;
+		} else
+			return false;
+
+	}
+
+	public static String guessAgain() {
+		Scanner input = new Scanner(System.in);
+		System.out.println("Only one character per guess. Guess again: ");
+		String guess = input.next();
+		return guess;
+	}
+	
+	public static boolean checkGuess(String guess) {
+		if (guesses.length() == 0) {
+			return false;
+		}
+		for (int i = 0; i < guesses.length(); i++) {
+			if (guesses.charAt(i) == guess.charAt(0)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public static int guessLetter(String topic, String guess) {
+
+		int count = 0;
+
+		if (guess.length() == 1) {
+			for (int i = 0; i < topic.length() - 1; i++) {
+
+				if (topic.charAt(i) == guess.charAt(0)) {
+					count++;
+				}
+			}
+
+		} else {
+			Scanner input = new Scanner(System.in);
+			System.out.println("Please enter only 1 letter. Guess Again");
+			System.out.println("Enter character: ");
+			String guess2 = input.next();
+			guessLetter(topic, guess2);
+		}
+		return count;
+	}
+	
+	public static void updateScore(int count, int points) {
+		if (count > 0) {
+			if (currentPlayer.matches("Computer")) {
+				computerScore += count * points;
+			} else {
+				player1Score += count * points;
+			}
+		}
+		if (count == 0) {
+			if (points < 0) {
+				if (currentPlayer.matches("Computer")) {
+					computerScore += points;
+				} else {
+					player1Score += count * points;
+				}
+			}
+			if (points > 0) {
+				if (currentPlayer.matches("Computer")) {
+					computerScore -= points;
+				} else {
+					player1Score -= points;
+				}
+			}
+		}
+
+	}
+	public static boolean guessPhrase(String topic) {
+		Scanner input = new Scanner(System.in);
+		boolean phraseGuessed = false; 
+		System.out.println("Enter phrase: ");
+		String guess = input.nextLine();
+		if (guess.equals(topic)) {
+			System.out.println("Correct!" + currentPlayer + " wins!");
+			phraseGuessed = true; 
+		} 
+		
+		else {
+			System.out.println("Incorrect!");
+			if(currentPlayer.matches("Computer")){
+				computerScore = 0; 
+			}
+			else{
+				player1Score = 0; 
+			}
+			phraseGuessed = false; 
+		}
+		return phraseGuessed; 
+	}
+
+	public static boolean checkIfGameOver() {
+		int counter = 0;
+		boolean gameOver = false;
+		for (int i = 0; i < guessed.length; i++) {
+			if (guessed[i] == true) {
+				counter++;
+			}
+		}
+		if (counter == guessed.length) {
+			gameOver = true;
+		}
+		return gameOver;
+	}
+	public static String computerPlay(){ 
+		String alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"; 
+		
+		int i = (int) (Math.random() * alphabet.length() - 1 );
+		char guessChar = alphabet.charAt(i);
+		
+		StringBuilder guess = new StringBuilder();
+		guess.setLength(0);
+		guess.append(guessChar);
+		 
+		//check if guess is in guessed 
+		boolean checked = checkGuess(guess.toString()); 
+		
+		while(checked){ 
+			guess.delete(0, guess.length()-1);
+			i = (int) Math.random() * 51;
+			guessChar = alphabet.charAt(i); 
+			guess.append(guessChar);
+			checked = checkGuess(guess.toString()); 
+		}
+		
+		return guess.toString(); 
+		
+	}
+	
+	
+	
+
+		
+}
